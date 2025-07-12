@@ -3,117 +3,96 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Local Puter Chat</title>
-  <link rel="stylesheet" href="main.css"> <!-- ✅ CSS بشكل صحيح -->
-  <script src="main.js"></script>
+  <title>Grok Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .chat-box {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    .message {
+      margin: 10px 0;
+    }
+    .user {
+      text-align: right;
+      color: blue;
+    }
+    .assistant {
+      text-align: left;
+      color: green;
+    }
+  </style>
 </head>
 <body>
-  <div class="chat-container">
-    <div class="chat-header">
-      <h1>🤖 grok 1.5 Chat</h1>
-      <p>Powered by Puter AI</p>
-    </div>
-
-    <div class="chat-messages" id="chatMessages">
-      <div class="empty-state">
-        <div class="empty-state-icon">💬</div>
-        <p>Start a conversation with grok!</p>
-      </div>
-    </div>
-
-    <div class="input-container">
-      <div class="input-wrapper">
-        <input type="text" id="userInput" placeholder="Ask me anything...">
-      </div>
-      <button id="sendBtn" onclick="sendMessage()">
-        <span class="btn-text">Send</span>
-        <div class="loading" style="display: none;"></div>
-      </button>
-    </div>
+  <div class="chat-box">
+    <h2>🤖 Chat with Grok (via XAI API)</h2>
+    <div id="chatMessages"></div>
+    <br>
+    <input type="text" id="userInput" placeholder="Type your message..." style="width: 80%;">
+    <button onclick="sendMessage()">Send</button>
   </div>
 
   <script>
-    let isLoading = false;
-    let messageHistory = [];
-
-    function addMessage(content, isUser = false) {
-      const messagesContainer = document.getElementById('chatMessages');
-      const emptyState = messagesContainer.querySelector('.empty-state');
-      if (emptyState) emptyState.remove();
-
-      const messageDiv = document.createElement('div');
-      messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
-      const now = new Date();
-      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      messageDiv.innerHTML = `
-        <div class="message-content">${content}</div>
-        <div class="message-time">${timeString}</div>
-      `;
-      messagesContainer.appendChild(messageDiv);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      messageHistory.push({ content, isUser, timestamp: now });
-    }
-
-    function showError(message) {
-      const messagesContainer = document.getElementById('chatMessages');
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'error-message';
-      errorDiv.textContent = message;
-      messagesContainer.appendChild(errorDiv);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    function setLoading(loading) {
-      isLoading = loading;
-      const sendBtn = document.getElementById('sendBtn');
-      const btnText = sendBtn.querySelector('.btn-text');
-      const loadingSpinner = sendBtn.querySelector('.loading');
-      const userInput = document.getElementById('userInput');
-      sendBtn.disabled = loading;
-      btnText.style.display = loading ? 'none' : 'block';
-      loadingSpinner.style.display = loading ? 'block' : 'none';
-      userInput.disabled = loading;
-    }
+    const API_KEY = "xai-WQPB7K3dtsCtHyBOkxV86ms8QZY892CCjtz52pfyRyQn0g2k3sewSqWqLcE3IJb8IKN3aAHBFuHrHYj7";
+    const API_URL = "https://api.x.ai/v1/chat/completions"; // ← غيره إذا كان يختلف
 
     async function sendMessage() {
-      const userInput = document.getElementById('userInput');
-      const message = userInput.value.trim();
-      if (!message || isLoading) return;
-      addMessage(message, true);
-      userInput.value = '';
-      setLoading(true);
+      const input = document.getElementById("userInput");
+      const message = input.value.trim();
+      if (!message) return;
+
+      // عرض رسالة المستخدم
+      appendMessage(message, "user");
+      input.value = "";
+
+      // إعداد الطلب
+      const body = {
+        model: "grok1.5", // ← غيره لو الاسم مختلف (مثلاً grok-1 أو grok-1.5)
+        messages: [{ role: "user", content: message }],
+        temperature: 0.7
+      };
+
       try {
-        if (typeof puter === 'undefined') throw new Error('Puter AI is not available. Please make sure main.js is loaded correctly.');
-        const response = await puter.ai.chat(message, { model: "grok-1.5", max_tokens: 1000 });
-        if (response?.message?.content?.[0]) {
-          addMessage(response.message.content[0].text, false);
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${API_KEY}`
+          },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+          appendMessage(data.choices[0].message.content, "assistant");
         } else {
-          throw new Error('Invalid response format from AI service');
+          appendMessage("⚠️ Unexpected response from API", "assistant");
+          console.error("Unexpected response:", data);
         }
-      } catch (error) {
-        console.error('Error sending message:', error);
-        showError(`Error: ${error.message}`);
-      } finally {
-        setLoading(false);
-        userInput.focus();
+      } catch (err) {
+        appendMessage("❌ Error: " + err.message, "assistant");
+        console.error(err);
       }
     }
 
-    document.getElementById('userInput').addEventListener('keyup', function(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-
-    window.addEventListener('load', function() {
-      document.getElementById('userInput').focus();
-    });
-
-    document.getElementById('userInput').addEventListener('input', function() {
-      this.style.height = 'auto';
-      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-    });
+    function appendMessage(text, role) {
+      const container = document.getElementById("chatMessages");
+      const div = document.createElement("div");
+      div.className = `message ${role}`;
+      div.textContent = text;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
   </script>
 </body>
 </html>
+
