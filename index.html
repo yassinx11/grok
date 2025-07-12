@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Local Puter Chat</title>
-  <link rel="stylesheet" href="main.css"> <!-- ✅ CSS بشكل صحيح -->
+  <title>Grok Chat via Puter</title>
+  <link rel="stylesheet" href="main.css">
   <script src="main.js"></script>
 </head>
 <body>
   <div class="chat-container">
     <div class="chat-header">
-      <h1>🤖 Claude Chat</h1>
+      <h1>🤖 Grok Chat</h1>
       <p>Powered by Puter AI</p>
     </div>
 
     <div class="chat-messages" id="chatMessages">
       <div class="empty-state">
         <div class="empty-state-icon">💬</div>
-        <p>Start a conversation with Claude!</p>
+        <p>Start a conversation with Grok!</p>
       </div>
     </div>
 
@@ -79,26 +79,39 @@
       const userInput = document.getElementById('userInput');
       const message = userInput.value.trim();
       if (!message || isLoading) return;
+
       addMessage(message, true);
       userInput.value = '';
       setLoading(true);
+
       try {
-        if (typeof puter === 'undefined') throw new Error('Puter AI is not available. Please make sure main.js is loaded correctly.');
-        const response = await puter.ai.chat(message, { model: "x-ai/grok-3", max_tokens: 1000 });
-        if (response?.message?.content?.[0]) {
-          addMessage(response.message.content[0].text, false);
-        } else {
-          throw new Error('Invalid response format from AI service');
-        }
+        if (typeof puter === 'undefined') throw new Error('Puter AI is not available.');
+
+        const response = await puter.ai.chat(message, {
+          model: "x-ai/grok-3", // ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ←
+          max_tokens: 1000
+        });
+
+        // 🧠 استخراج الرد بشكل ديناميكي
+        const result =
+          response?.message?.content?.[0]?.text ||
+          response?.message?.content ||
+          response?.message?.text ||
+          response?.message ||
+          "⚠️ No response received.";
+
+        addMessage(result, false);
+
       } catch (error) {
         console.error('Error sending message:', error);
-        showError(`Error: ${error.message}`);
+        showError("Error: " + error.message);
       } finally {
         setLoading(false);
         userInput.focus();
       }
     }
 
+    // 🔁 اختصارات الاستخدام
     document.getElementById('userInput').addEventListener('keyup', function(e) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
